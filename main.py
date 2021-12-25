@@ -37,67 +37,58 @@ touch4 = touchio.TouchIn(board.D4)
 
 # NeoPixel strip (of 16 LEDs) connected on D4
 NUMPIXELS = 44
-neopixels = neopixel.NeoPixel(board.D13, NUMPIXELS, brightness=0.2, auto_write=False)
+neopixels = neopixel.NeoPixel(board.D13, NUMPIXELS, brightness=1, auto_write=False)
 
 # Used if we do HID output, see below
 #kbd = Keyboard()
-
+ledMode = 0
+brightness = 255
+modeSwitch = 0
 ######################### HELPERS ##############################
 
-# Helper to convert analog input to voltage
-def getVoltage(pin):
-    return (pin.value * 3.3) / 65536
 
-# Helper to give us a nice color swirl
-def wheel(pos):
-    # Input a value 0 to 255 to get a color value.
-    # The colours are a transition r - g - b - back to r.
-    if (pos < 0):
-        return (0, 0, 0)
-    if (pos > 255):
-        return (0, 0, 0)
-    if (pos < 85):
-        return (int(pos * 3), int(255 - (pos*3)), 0)
-    elif (pos < 170):
-        pos -= 85
-        return (int(255 - pos*3), 0, int(pos*3))
-    else:
-        pos -= 170
-        return (0, int(pos*3), int(255 - pos*3))
+
+def updateMode(brightness):
+  print("updating to", ledMode, brightness)
+  for p in range(NUMPIXELS):
+      if ledMode == 0:
+        #                         G                              R                           B
+        neopixels[p] = (int((brightness * 255) / 256), int((brightness * 255) / 256), int((brightness * 255) / 256))
+      elif ledMode == 1:
+        neopixels[p] = (int((brightness * 197) / 256), int((brightness * 255) / 256), int((brightness * 143) / 256))
+      elif ledMode == 2:
+        neopixels[p] = (int((brightness * 50) / 256), int((brightness * 255) / 256), int((brightness * 41) / 256))
+      elif ledMode == 3:
+        neopixels[p] = (int((brightness * 183) / 256), int((brightness * 255) / 256), int((brightness * 76) / 256))
+      else:
+        neopixels[p] = (0, 0, 0)
+  neopixels.show()
 
 ######################### MAIN LOOP ##############################
 
-i = 0
+updateMode(brightness)
 while True:
-  # spin internal LED around! autoshow is on
-  #dot[0] = wheel(i & 255)
-
-  # also make the neopixels swirl around
-  for p in range(NUMPIXELS):
-      idx = int ((p * 256 / NUMPIXELS) + i)
-      neopixels[p] = wheel(idx & 255)
-  neopixels.show()
-
-  # set analog output to 0-3.3V (0-65535 in increments)
-  #aout.value = i * 256
-
-  # Read analog voltage on D0
-  #print("D0: %0.2f" % getVoltage(analog1in))
-
-  # use D3 as capacitive touch to turn on internal LED
-  if touch1.value:
+  
+  if touch1.value and (modeSwitch == 0):
       print("D1 touched!")
-  #led.value = touch1.value
-  if touch3.value:
+      modeSwitch = 1
+      ledMode = ledMode + 1
+      if ledMode > 4:
+        ledMode = 0
+      updateMode(brightness)
+  elif touch3.value:
       print("D3 touched!")
-  if touch4.value:
+      if brightness > 10:
+        brightness = brightness - 10
+        updateMode(brightness)
+  elif touch4.value:
       print("D4 touched!")
+      if brightness < 245:
+        brightness = brightness + 10
+        updateMode(brightness)
 
-  if not button.value:
-      print("Button on D2 pressed!")
-      # optional! uncomment below & save to have it sent a keypress
-      #kbd.press(Keycode.A)
-      #kbd.release_all()
+  if (touch1.value == 0) and (modeSwitch == 1):
+    modeSwitch = 0
+    print("modeSwitch back to 0")
 
-  i = (i+1) % 256  # run from 0 to 255
-  #time.sleep(0.01) # make bigger to slow down
+
